@@ -40,12 +40,12 @@ def in_all_engine_moves(move, all_engine_moves):
         pass
 
 #calculates the loss/gain of prepetual attack from both sides
-def static_eval_exchange(board, target_square):
+def static_exchange_eval(board, target_square):
     gainscore = []
     turn = board.turn
 
-    white_attackers = board.attackers(chess.WHITE, target_square)
-    black_attackers = board.attackers(chess.BLACK, target_square)
+    white_attackers = list(board.attackers(chess.WHITE, target_square))
+    black_attackers = list(board.attackers(chess.BLACK, target_square))
 
     #find the attacks in the initial position
     initial_attackers = white_attackers if turn == chess.WHITE else black_attackers
@@ -62,7 +62,7 @@ def static_eval_exchange(board, target_square):
     gainscore.append(current_piece_value)
 
     #run perpetual attack in copy board
-    sim_board =  board.copy()
+    sim_board = board.copy()
 
     while True:
         #check attackers per move, if there's no more attackers, break
@@ -118,9 +118,9 @@ def find_loses(board):
             else:
                 board_sim = board.copy()
 
-                see_score = static_eval_exchange(board_sim, square)
+                see_score = static_exchange_eval(board_sim, square)
 
-                if see_score > 1:
+                if board.turn == attacker_color:
                     loses["En Prise"].append((chess.square_name(square), piece.symbol()))
                 else:
                     loses["Hanging Piece"].append((chess.square_name(square), piece.symbol()))
