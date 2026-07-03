@@ -6,6 +6,15 @@ import traceback
 
 engine = chess.engine.SimpleEngine.popen_uci(r"C:\Users\notcz\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
 
+PIECE_VALUES = {
+    chess.PAWN: 100,      
+    chess.KNIGHT: 300,    
+    chess.BISHOP: 300,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 100000
+}
+
 #check centipawn or mate 
 def ismate(info):
     score = info["score"].pov(chess.WHITE)
@@ -30,25 +39,95 @@ def in_all_engine_moves(move, all_engine_moves):
     else:
         pass
 
-def find_hanging_pieces(board):
-    hanging_pieces = []
+#calculates the loss/gain of prepetual attack from both sides
+def static_eval_exchange(board, target_square):
+    gainscore = []
+    turn = board.turn
+
+    white_attackers = board.attackers(chess.WHITE, target_square)
+    black_attackers = board.attackers(chess.BLACK, target_square)
+
+    #find the attacks in the initial position
+    initial_attackers = white_attackers if turn == chess.WHITE else black_attackers
+    if not initial_attackers:
+        return 0 
+    
+    #find the target square location
+    target_piece_square =  board.piece_at(target_square)
+    if  not target_piece_square:
+        return 0
+    
+    #get the target piece cp
+    current_piece_value = PIECE_VALUES[target_piece_square.piece_type]
+    gainscore.append(current_piece_value)
+
+    #run perpetual attack in copy board
+    sim_board =  board.copy()
+
+    while True:
+        #check attackers per move, if there's no more attackers, break
+        attackers =  sim_board.attackers(turn, target_square)
+        if not attackers:
+            break
+
+        #check for the lowest value attacker
+        lowest_attacker_square = minimum_attacker_values(sim_board, attackers)
+        attacker_piece = sim_board.piece_at(lowest_attacker_square)
+
+        gainscore.append(current_piece_value)
+
+        #move the attacker piece to target square and assign it as the next target piece
+        current_piece_value = PIECE_VALUES[attacker_piece.piece_type]
+
+        move = chess.Move(lowest_attacker_square, target_square)
+        sim_board.push(move)
+
+        turn = not turn 
+
+    while len(gainscore) > 1:
+        #if gainscore is negative, the defender lose cp
+        last_gainscore = gainscore.pop()
+        gainscore[-1] = gainscore[-1] - max(0, last_gainscore)
+    
+    return gainscore[0]
+
+#find the square that holds the lowest value attacker
+def minimum_attacker_values(board, attackers):
+    return min(attackers, key=lambda sq: PIECE_VALUES[board.piece_at(sq).piece_type])
+
+#scans every square and fin hanging pieces 
+def find_loses(board):
+    loses = {
+        "Loose Piece": [],
+        "Hanging Piece":  [],
+        "En Prise": []
+    }
+
     for square, piece in board.piece_map().items():
 
-        attackers = board.attackers(not piece.color, square)
-        defenders = board.attackers(piece.color, square)
-        
-        print(
-            chess.square_name(square),
-            piece.symbol(),
-            list(map(chess.square_name, attackers)),
-            list(map(chess.square_name, defenders))
-        )
+        defender_color = piece.color
+        attacker_color = not defender_color
 
-        if attackers and not defenders:
-            hanging_pieces.append((square, piece))
+        attackers = board.attackers(attacker_color, square)
+        defenders = board.attackers(defender_color, square)
 
-    return hanging_pieces
-    
+        if attackers:
+            if not defenders:
+                loses["Loose Piece"].append((chess.square_name(square), piece.symbol()))
+
+            else:
+                board_sim = board.copy()
+
+                see_score = static_eval_exchange(board_sim, square)
+
+                if see_score > 1:
+                    loses["En Prise"].append((chess.square_name(square), piece.symbol()))
+                else:
+                    loses["Hanging Piece"].append((chess.square_name(square), piece.symbol()))
+
+    return loses
+
+#classify mate scores/cp/mix and return a classification
 def classify_scores(before_info, after_info, turn, playermove, legalmoves, all_engine_moves):
     score1 = before_info[0]["score"].pov(chess.WHITE)
     score2 = after_info["score"].pov(chess.WHITE)
@@ -198,7 +277,7 @@ try:
             
                 #print CPL, classificationn and engine I move
                 print(f"CPL: {CPL / 100}, Classification: {classification}, {in_all_engine_moves(move, all_engine_moves)}")
-                print(f"[Turn: {turn}, Hanging pieces: {find_hanging_pieces(board)}]")
+                print(f"[Turn: {turn}, Hanging pieces: {find_loses(board)}]")
                 print("~-~-~-~-~-~-~-~-~")
                 
 except Exception as e:
@@ -208,13 +287,14 @@ finally:
     engine.quit()
 
 '''
-inside for loop move
-for loop square in player board.piece
-hanging pieces = []
-(eg whites turn)
-attackers = attackers(black)
-defenders = attackers(white)
-if attacker attakcing that square and no defender
-    append to hanging pieces
-return hanging pices
+get attackers
+get thhe least valuable attacker
+append the least valuable attacker to gainscores
+move the attacker to target square
+flip board turn 
+
+while len(gainscore) > 1:
+last score =  gainscore.pop()
+last gainnscore item = last gainscore - max(0 or lastscore)
+
 '''
