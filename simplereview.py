@@ -39,6 +39,23 @@ def in_all_engine_moves(move, all_engine_moves):
     else:
         pass
 
+def cp_to_win_prob(before_score_info, after_score_info, turn):
+    before_score = before_score_info["cp"]
+    after_score = after_score_info["cp"]
+    if before_score is None or after_score is None:
+        return 0
+    
+    before_pawn_score = round(before_score / 100, 3)
+    after_pawn_score = round(after_score / 100, 3)
+
+    before_win_prob = round(1 / (1 + 10**(-before_pawn_score / 4)) * 100, 2)
+    after_win_prob = round(1 / (1 + 10**(-after_pawn_score / 4)) * 100, 2)
+
+    if turn == chess.WHITE:
+        return f"{before_win_prob}%", f"{after_win_prob}%", "white" 
+    else:
+        return f"{100 - before_win_prob}%", f"{100 - after_win_prob}%", "black"
+
 #calculates the loss/gain of prepetual attack from both sides
 def static_exchange_eval(board, target_square):
     gainscore = []
@@ -278,6 +295,7 @@ try:
                 #print CPL, classificationn and engine I move
                 print(f"CPL: {CPL / 100}, Classification: {classification}, {in_all_engine_moves(move, all_engine_moves)}")
                 print(f"[Turn: {turn}, Hanging pieces: {find_loses(board)}]")
+                print(f"Win prob: {cp_to_win_prob(before_score_info, after_score_info, moving_side)}")
                 print("~-~-~-~-~-~-~-~-~")
                 
 except Exception as e:
@@ -286,15 +304,3 @@ except Exception as e:
 finally:
     engine.quit()
 
-'''
-get attackers
-get thhe least valuable attacker
-append the least valuable attacker to gainscores
-move the attacker to target square
-flip board turn 
-
-while len(gainscore) > 1:
-last score =  gainscore.pop()
-last gainnscore item = last gainscore - max(0 or lastscore)
-
-'''
