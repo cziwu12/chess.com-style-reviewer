@@ -41,6 +41,20 @@ def in_all_engine_moves(move, all_engine_moves):
     else:
         pass
 
+def wdl(scoreinfo, turn, ply):
+    print(scoreinfo)
+    score = scoreinfo["score"]
+    if score is None:
+        return 99.9 if turn == chess.WHITE else 0.01
+    
+    wdl_prob = score.wdl(ply)
+    win_prob = wdl_prob.win_percent * 100
+
+    if turn == chess.WHITE:
+        return wdl_prob, win_prob
+    else:
+        return wdl_prob, 100 - win_prob
+
 #conerts centipawns to win percentages 
 def cp_to_win_prob(before_score_info, after_score_info, turn):
     before_score = before_score_info["cp"]
@@ -247,6 +261,7 @@ try:
             print(game.headers["Event"])
 
             board = chess.Board()
+            ply = 0
 
             for i, move in enumerate(game.mainline_moves()):
                 moving_side = board.turn
@@ -268,10 +283,14 @@ try:
 
                 #formating the score 
                 before_score_info = ismate(before_info[0])
+                ply += 1
                 if before_score_info["type"] == "mate":
                     print(f"Evaluation Before Move: Mate in {abs(before_score_info["mate"])}")
                 else:
-                    print(f"Evaluation Before Move: {before_score_info["cp"]/100:+.2f}")
+                    print(f"Evaluation Before Move: {before_score_info["cp"]/100:+.2f} Ply: {ply}")
+
+                before_wdl, before_winprob = wdl(before_info[0], moving_side, ply)
+                print(before_wdl, before_win_prob)
 
                 print("|———————————————|")
 
@@ -284,10 +303,14 @@ try:
 
                 #format the score
                 after_score_info = ismate(after_info)
+                ply += 1
                 if after_score_info["type"] == "mate":
                     print(f"Evaluation After Move: Mate in {abs(after_score_info["mate"])}")
                 else:
-                    print(f"Evaluation After Move: {after_score_info["cp"]/100:+.2f}")
+                    print(f"Evaluation After Move: {after_score_info["cp"]/100:+.2f} Ply: {ply}")
+
+                after_wdl, after_winprob = wdl(after_score_info, moving_side, ply)
+                print(after_wdl, after_win_prob)
 
                 print("|———————————————|")
 
