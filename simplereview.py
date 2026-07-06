@@ -6,6 +6,8 @@ import traceback
 
 engine = chess.engine.SimpleEngine.popen_uci(r"C:\Users\notcz\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
 
+engine.configure({"UCI_ShowWDL": True})
+
 PIECE_VALUES = {
     chess.PAWN: 100,      
     chess.KNIGHT: 300,    
