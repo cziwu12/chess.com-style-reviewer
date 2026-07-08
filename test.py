@@ -17,18 +17,46 @@ PIECE_VALUES = {
     chess.KING: 100000
 }
 
+white_accuracy = []
+black_accuracy = []
+
 #1. e4 e5 2. Nf3 d6 3. Bc4 Bg4 4. Nc3 g6 5. Nxe5 Bxd1 6. Bxf7+ Ke7 7. Nd5# 1-0
+def game_accuracy(white_accuracy, black_accuracy):
+    white_weights = []
+    black_weights = []
+    total_moves = len(white_accuracy) + len(black_accuracy)
+
+    for i in white_accuracy:
+        i_weight = 1 + (8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * (abs(i) - 0.2)))
+        white_weights.append(i_weight)
+    
+    for u in black_accuracy:
+        u_weight = 1 + ((8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * ((abs(u)) - 0.2))))
+        black_weights.append(u_weight)
+
+    white_game_accuracy = sum(ww * wl for ww, wl in zip(white_weights, white_accuracy)) / sum(white_weights)
+    black_game_accuracy = sum(bw * bl for bw, bl in zip(black_weights, black_accuracy)) / sum(black_weights)
+
+    print(white_accuracy)
+    print(white_weights)
+    print(white_game_accuracy)
+    print("----------")
+    print(black_accuracy)
+    print(black_weights)
+    print(black_game_accuracy)
+    print("----------")
+
+    return white_game_accuracy, black_game_accuracy
+
 
 def move_accuracy(before_score, after_score, turn):
     if before_score is None or after_score is None:
         return 99.9 if turn == chess.WHITE else 0.01
     
-    if turn == chess.WHITE:
-        loss = max(0, ((before_score -  after_score) * 100))
-    else:
-        loss = max(0, ((after_score - before_score) * 100))
+    loss = max(0, before_score - after_score) * 100 if turn == chess.WHITE else max(0, after_score - before_score) * 100
 
     accuracy = 103.1668 * math.exp(-0.04354 * loss) - 3.1669
+    white_accuracy.append(accuracy) if turn == chess.WHITE else black_accuracy.append(accuracy)
 
     return round(max(0, accuracy), 2)
 
@@ -51,24 +79,31 @@ try:
 
                 #analysing initial board and get the engine move
                 board_sim = board.copy()
-                before_info = engine.analyse(board_sim, chess.engine.Limit(time=1, depth=22), multipv=7) #before engine move is played (empty board)
+                before_info = engine.analyse(board_sim, chess.engine.Limit(time=1, depth=22)) #before engine move is played (empty board)
 
                 #get all the moves by the engine
-                all_engine_moves = [pv["pv"][0] for pv in before_info] 
+                all_engine_moves = before_info["pv"][0] #[pv["pv"][0] for pv in before_info] 
 
                 #get the best engine move an convert it to SAN format
-                engine_move = all_engine_moves[0]
-                engine_san = board_sim.san(engine_move)
+                #engine_move = all_engine_moves[0]
+                engine_san = board_sim.san(all_engine_moves)
 
                 #show the engine move on the board along with other info
-                board_sim.push(all_engine_moves[0])
-                print(f"No{i+1}. Engine Move: {engine_san} ({all_engine_moves[0]}) \n {board_sim}")
+                board_sim.push(all_engine_moves)
+                print(f"No{i+1}. Engine Move: {engine_san} ({all_engine_moves}) \n {board_sim}")
 
                 if board_sim.is_game_over():
                     print("Game Over")
-                    continue
+                    if turn == chess.WHITE:
+                        accuracy = 0.0
+                    if board.is_stalemate():
+                        accuracy = 0.5
+                    else:
+                        accuracy = 1.0
+
+                    print(accuracy)
                 else:
-                    beforewdl = before_info[0]["wdl"]
+                    beforewdl = before_info["wdl"]
 
                     before_score = beforewdl.white().expectation()
 
@@ -84,11 +119,19 @@ try:
                 player_san = board.san(move)
                 board.push(move)
                 print(f"Player Move: {player_san} ({move}) \n {board}")
-                after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=22))  #after player move is played (e4 board)
+                after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=43))  #after player move is played (e4 board)
                 legal_moves = list(board.legal_moves)
 
                 if board.is_game_over():
                     print("Game Over")
+                    if turn == chess.WHITE:
+                        accuracy = 1.0
+                    if board.is_stalemate():
+                        accuracy = 0.5
+                    else:
+                        accuracy = 0.0
+
+                    print(accuracy)
                     continue
                 else:
                     afterwdl = after_info["wdl"]
@@ -104,9 +147,13 @@ try:
                 print("|———————————————|")
                 player_move_accuracy = move_accuracy(before_score, after_score, turn)
                 print(player_move_accuracy)
+            
 
                 print("~-~-~-~-~-~-~-~-~")
-                
+
+            white_game_accuracy, black_game_accuracy = game_accuracy(white_accuracy, black_accuracy)   
+            print(f"White Game Accuracy: {round(white_game_accuracy, 2)}%")
+            print(f"Black Game Accuracy: {round(black_game_accuracy, 2)}%")
 except Exception as e:
     print(e)
     print(traceback.format_exc())
