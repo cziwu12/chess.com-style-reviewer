@@ -27,24 +27,15 @@ def game_accuracy(white_accuracy, black_accuracy):
     total_moves = len(white_accuracy) + len(black_accuracy)
 
     for i in white_accuracy:
-        i_weight = 1 + (8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * (abs(i) - 0.2)))
+        i_weight = 1 + ((8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * (abs(i / 100) - 0.2))))
         white_weights.append(i_weight)
     
     for u in black_accuracy:
-        u_weight = 1 + ((8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * ((abs(u)) - 0.2))))
+        u_weight = 1 + ((8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * (abs(u / 100) - 0.2))))
         black_weights.append(u_weight)
 
     white_game_accuracy = sum(ww * wl for ww, wl in zip(white_weights, white_accuracy)) / sum(white_weights)
     black_game_accuracy = sum(bw * bl for bw, bl in zip(black_weights, black_accuracy)) / sum(black_weights)
-
-    print(white_accuracy)
-    print(white_weights)
-    print(white_game_accuracy)
-    print("----------")
-    print(black_accuracy)
-    print(black_weights)
-    print(black_game_accuracy)
-    print("----------")
 
     return white_game_accuracy, black_game_accuracy
 
@@ -56,6 +47,7 @@ def move_accuracy(before_score, after_score, turn):
     loss = max(0, before_score - after_score) * 100 if turn == chess.WHITE else max(0, after_score - before_score) * 100
 
     accuracy = 103.1668 * math.exp(-0.04354 * loss) - 3.1669
+    accuracy = max(0, min(100, accuracy))
     white_accuracy.append(accuracy) if turn == chess.WHITE else black_accuracy.append(accuracy)
 
     return round(max(0, accuracy), 2)
@@ -92,26 +84,13 @@ try:
                 board_sim.push(all_engine_moves)
                 print(f"No{i+1}. Engine Move: {engine_san} ({all_engine_moves}) \n {board_sim}")
 
-                if board_sim.is_game_over():
-                    print("Game Over")
-                    if turn == chess.WHITE:
-                        accuracy = 0.0
-                    if board.is_stalemate():
-                        accuracy = 0.5
-                    else:
-                        accuracy = 1.0
+                beforewdl = before_info["wdl"]
 
-                    print(accuracy)
-                else:
-                    beforewdl = before_info["wdl"]
+                before_score = beforewdl.white().expectation()
 
-                    before_score = beforewdl.white().expectation()
-
-                    print(beforewdl)
-                    print(before_score)  
-                    print(beforewdl.white().wins  / 10) 
-                    print(beforewdl.white().draws / 10)  
-                    print(beforewdl.white().losses / 10)
+                print(beforewdl)
+                print(before_score)  
+                print(f"WDL Prob: Win: {beforewdl.white().wins / 10}% | Draw: {beforewdl.white().draws / 10}% | Loss: {beforewdl.white().losses / 10}%")
 
                 print("|———————————————|")
 
@@ -119,20 +98,18 @@ try:
                 player_san = board.san(move)
                 board.push(move)
                 print(f"Player Move: {player_san} ({move}) \n {board}")
-                after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=43))  #after player move is played (e4 board)
+                after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=22))  #after player move is played (e4 board)
                 legal_moves = list(board.legal_moves)
 
                 if board.is_game_over():
-                    print("Game Over")
-                    if turn == chess.WHITE:
-                        accuracy = 1.0
                     if board.is_stalemate():
-                        accuracy = 0.5
+                        after_score = 0.5
+                    elif turn == chess.WHITE:
+                        after_score = 1.0
                     else:
-                        accuracy = 0.0
+                        after_score = 0.0
 
-                    print(accuracy)
-                    continue
+                    print(after_score)
                 else:
                     afterwdl = after_info["wdl"]
 
@@ -140,9 +117,7 @@ try:
 
                     print(afterwdl)
                     print(after_score)  
-                    print(afterwdl.white().wins / 10) 
-                    print(afterwdl.white().draws / 10)  
-                    print(afterwdl.white().losses / 10)              
+                    print(f"WDL Prob: Win: {afterwdl.white().wins / 10}% | Draw: {afterwdl.white().draws / 10}% | Loss: {afterwdl.white().losses / 10}%")             
 
                 print("|———————————————|")
                 player_move_accuracy = move_accuracy(before_score, after_score, turn)
@@ -151,6 +126,7 @@ try:
 
                 print("~-~-~-~-~-~-~-~-~")
 
+            print("Game Over")
             white_game_accuracy, black_game_accuracy = game_accuracy(white_accuracy, black_accuracy)   
             print(f"White Game Accuracy: {round(white_game_accuracy, 2)}%")
             print(f"Black Game Accuracy: {round(black_game_accuracy, 2)}%")
@@ -159,3 +135,5 @@ except Exception as e:
     print(traceback.format_exc())
 finally:
     engine.quit()
+
+

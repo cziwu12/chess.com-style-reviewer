@@ -3,6 +3,7 @@ import chess.pgn
 import chess.engine 
 from chess.engine import Cp, Mate
 import traceback
+import math 
 
 engine = chess.engine.SimpleEngine.popen_uci(r"C:\Users\notcz\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
 
@@ -16,6 +17,9 @@ PIECE_VALUES = {
     chess.QUEEN: 900,
     chess.KING: 100000
 }
+
+white_move_accuracy = []
+black_move_accuracy = []
 
 #check centipawn or mate 
 def ismate(info):
@@ -34,54 +38,38 @@ def ismate(info):
             "cp": score.score()
         }
     
-#check if player move is in engine moves
-def in_all_engine_moves(move, all_engine_moves):
-    if move in all_engine_moves:
-        return f"Engine's #{all_engine_moves.index(move) + 1} Move"
-    else:
-        pass
-
-def wdl(scoreinfo, turn, ply):
-    print(scoreinfo)
-    score = scoreinfo["score"]
-    if score is None:
-        return 99.9 if turn == chess.WHITE else 0.01
+def move_accuracy(before_expectation_score, after_expectation_score, turn):
+    if before_expectation_score is None or after_expectation_score is None:
+        return 99.99 if turn == chess.WHITE else 0.01
     
-    wdl_prob = score.wdl(ply)
-    win_prob = wdl_prob.win_percent * 100
+    loss = max(0, before_expectation_score - after_expectation_score) * 100 if turn == chess.WHITE else max(0, after_expectation_score - before_expectation_score) * 100
 
-    if turn == chess.WHITE:
-        return wdl_prob, win_prob
-    else:
-        return wdl_prob, 100 - win_prob
+    accuracy = 103.1668 * math.exp(-0.04354 * loss) - 3.1669
+    accuracy = max(0, min(100, accuracy))
 
-#conerts centipawns to win percentages 
-def cp_to_win_prob(before_score_info, after_score_info, turn):
-    before_score = before_score_info["cp"]
-    after_score = after_score_info["cp"]
-    if before_score is None or after_score is None:
-        if turn == chess.WHITE:
-            return 99.99, 99.99
-        else:
-            return 0.01, 0.01
+    white_move_accuracy.append(accuracy) if turn == chess.WHITE else black_move_accuracy.append(accuracy)
     
-    before_pawn_score = before_score / 100
-    after_pawn_score = after_score / 100
+    return round(max(0, accuracy), 2)
 
-    #apply sigmoid function 
-    before_win_prob = round(1 / (1 + 10**(-before_pawn_score / 4)) * 100, 2)
-    after_win_prob = round(1 / (1 + 10**(-after_pawn_score / 4)) * 100, 2)
+def game_accuracy(white_move_accuracy, black_move_accuracy):
+    print(white_move_accuracy)
+    print(black_move_accuracy)
+    white_weights = []
+    black_weights = []
+    total_moves = len(white_move_accuracy) + len(black_move_accuracy)
 
-    if turn == chess.WHITE:
-        return before_win_prob, after_win_prob
-    else:
-        return 100 - before_win_prob, 100 - after_win_prob
+    for white_move in white_move_accuracy:
+        white_move_weights = 1 + ((8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * (abs(white_move / 100) - 0.2))))
+        white_weights.append(white_move_weights)
 
-def move_accuracy(before_win_prob, after_win_prob):
-    if 100 - (before_win_prob - after_win_prob) > 100:
-        return 100
-    else: 
-        return 100 - (before_win_prob - after_win_prob)
+    for black_move in black_move_accuracy:
+        black_move_weights = 1 + ((8 * math.sqrt(total_moves / 45)) / (1 + math.exp(-12 * (abs(black_move / 100) - 0.2))))
+        black_weights.append(black_move_weights)
+
+    white_game_accuracy = sum(ww * wl for ww, wl in zip(white_weights, white_move_accuracy)) / sum(white_weights)
+    black_game_accuracy = sum(bw * bl for bw, bl in zip(black_weights, black_move_accuracy)) / sum(black_weights)
+
+    return white_game_accuracy, black_game_accuracy
 
 #calculates the loss/gain of prepetual attack from both sides
 def static_exchange_eval(board, target_square):
@@ -172,15 +160,15 @@ def find_loses(board):
     return loses
 
 #classify mate scores/cp/mix and return a classification
-def classify_scores(before_info, after_info, turn, playermove, legalmoves, all_engine_moves):
-    score1 = before_info[0]["score"].pov(chess.WHITE)
+def classify_scores(before_info, after_info, turn, playermove, legalmoves, engine_move):
+    score1 = before_info["score"].pov(chess.WHITE)
     score2 = after_info["score"].pov(chess.WHITE)
 
     if score1 is not None and score2 is not None:
 
         if len(legalmoves) == 1:
             return "Forced"
-        elif playermove == all_engine_moves[0]:
+        elif playermove == engine_move:
             return "Best"
         elif score1.is_mate() and score2.is_mate():
             matescore1 = score1.mate()
@@ -264,42 +252,55 @@ try:
             ply = 0
 
             for i, move in enumerate(game.mainline_moves()):
-                moving_side = board.turn
+                turn = board.turn
 
                 #analysing initial board and get the engine move
                 board_sim = board.copy()
-                before_info = engine.analyse(board_sim, chess.engine.Limit(time=1, depth=10), multipv=7) #before engine move is played (empty board)
-
-                #get all the moves by the engine
-                all_engine_moves = [pv["pv"][0] for pv in before_info] 
+                before_info = engine.analyse(board_sim, chess.engine.Limit(time=1, depth=22)) #before engine move is played (empty board)
 
                 #get the best engine move an convert it to SAN format
-                engine_move = all_engine_moves[0]
+                engine_move = before_info["pv"][0]
                 engine_san = board_sim.san(engine_move)
 
                 #show the engine move on the board along with other info
-                board_sim.push(all_engine_moves[0])
-                print(f"No{i+1}. Engine Move: {engine_san} ({all_engine_moves[0]}) \n {board_sim}")
+                board_sim.push(engine_move)
+                print(f"No{i+1}. Engine Move: {engine_san} \n {board_sim}")
+
+                before_wdl = before_info["wdl"].white()
+                before_expection_score = before_wdl.expectation()
+                
+                print(f"WDL Prob: Win: {before_wdl.wins / 10}% | Draw: {before_wdl.draws / 10}% | Loss: {before_wdl.losses / 10}%")
 
                 #formating the score 
-                before_score_info = ismate(before_info[0])
+                before_score_info = ismate(before_info)
                 ply += 1
                 if before_score_info["type"] == "mate":
                     print(f"Evaluation Before Move: Mate in {abs(before_score_info["mate"])}")
                 else:
                     print(f"Evaluation Before Move: {before_score_info["cp"]/100:+.2f} Ply: {ply}")
 
-                before_wdl, before_winprob = wdl(before_info[0], moving_side, ply)
-                print(before_wdl, before_win_prob)
 
                 print("|———————————————|")
 
                 #convert player move to SAN format and play the mvpe
                 player_san = board.san(move)
                 board.push(move)
-                print(f"Player Move: {player_san} ({move}) \n {board}")
-                after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=10))  #after player move is played (e4 board)
+                print(f"Player Move: {player_san} \n {board}")
+                after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=22))  #after player move is played (e4 board)
                 legal_moves = list(board.legal_moves)
+
+                if board.is_game_over():
+                    if board.is_stalemate:
+                        accuracy = 0.5
+                    elif turn == chess.WHITE:
+                        accuracy = 1.0
+                    else:
+                        accuracy = 0.0
+                else:
+                    after_wdl = after_info["wdl"].white()
+                    after_expection_score = after_wdl.expectation()
+                
+                    print(f"WDL Prob: Win: {after_wdl.wins / 10}% | Draw: {after_wdl.draws / 10}% | Loss: {after_wdl.losses / 10}%")               
 
                 #format the score
                 after_score_info = ismate(after_info)
@@ -309,33 +310,35 @@ try:
                 else:
                     print(f"Evaluation After Move: {after_score_info["cp"]/100:+.2f} Ply: {ply}")
 
-                after_wdl, after_winprob = wdl(after_score_info, moving_side, ply)
-                print(after_wdl, after_win_prob)
 
                 print("|———————————————|")
 
                 #calculating cpl
 
-                classification = classify_scores(before_info, after_info, moving_side, move, legal_moves, all_engine_moves)
+                classification = classify_scores(before_info, after_info, turn, move, legal_moves, engine_move)
 
                 if before_score_info["type"] == "mate" or after_score_info["type"] == "mate":
                     pass
                 else:
-                    if moving_side == chess.WHITE:
+                    if turn == chess.WHITE:
                         CPL = max(0, before_score_info["cp"] - after_score_info["cp"]) 
-                        turn = "White"
+                        turn_name = "White"
                     else:
                         CPL = max(0, after_score_info["cp"] - before_score_info["cp"]) 
-                        turn = "Black"
+                        turn_name = "Black"
 
-                before_win_prob, after_win_prob = cp_to_win_prob(before_score_info, after_score_info, moving_side)
+                accuracy = move_accuracy(before_expection_score, after_expection_score, turn)
+
             
                 #print CPL, classificationn and engine I move
-                print(f"CPL: {CPL / 100}, Classification: {classification}, {in_all_engine_moves(move, all_engine_moves)}")
-                print(f"[Turn: {turn}, Hanging pieces: {find_loses(board)}]")
-                print(f"Win prob: {before_win_prob, after_win_prob}, Accuracy: {move_accuracy(before_win_prob, after_win_prob, moving_side)}")
+                print(f"CPL: {CPL / 100}, Classification: {classification})")
+                print(f"[Turn: {turn_name}, Hanging pieces: {find_loses(board)}]")
+                print(accuracy)
                 print("~-~-~-~-~-~-~-~-~")
-                
+            
+            white_game_accuracy, black_game_accuracy = game_accuracy(white_move_accuracy, black_move_accuracy)
+            print(f"White Game Accuracy: {white_game_accuracy}%")
+            print(f"Black Game Accuracy: {black_game_accuracy}%")
 except Exception as e:
     print(e)
     print(traceback.format_exc())
