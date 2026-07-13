@@ -2,6 +2,8 @@ import chess.engine
 
 engine = chess.engine.SimpleEngine.popen_uci(r"C:\Users\notcz\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
 
+engine.configure({"UCI_ShowWDL": True})
+
 def analyse_game(board, move):
         turn = board.turn
 
@@ -28,5 +30,7 @@ def analyse_game(board, move):
             "Player Board FEN": player_board_fen,
             "Engine Info": before_info,
             "Player Info": after_info,
-            "Turn": turn
+            "Turn": turn,
+            "Legal Moves": legal_moves
         }
+
