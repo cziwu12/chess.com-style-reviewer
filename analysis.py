@@ -7,6 +7,9 @@ engine.configure({"UCI_ShowWDL": True})
 def analyse_game(board, move):
         turn = board.turn
 
+        # Capture this before the move; it is used to identify forced moves.
+        legal_moves = list(board.legal_moves)
+
         board_sim = board.copy()
         before_info = engine.analyse(board_sim, chess.engine.Limit(time=1, depth=22)) 
 
@@ -21,8 +24,6 @@ def analyse_game(board, move):
         player_board_fen = board.fen()
 
         after_info = engine.analyse(board, chess.engine.Limit(time=1, depth=22)) 
-        legal_moves = list(board.legal_moves)
-
         return {
             "Best Move": engine_san,
             "Player Move": player_san,

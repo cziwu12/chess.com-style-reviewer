@@ -3,30 +3,29 @@ import chess.pgn
 from analysis import analyse_game, engine
 import evaluation
 from game_evaluation import game_accuracy
-import traceback
 
+def review_game(PGN_PATH):
+    moves = []
+    previous_eval = 0
+    white_accuracy = []
+    black_accuracy = []
+    white_classifications = {}
+    black_classifications = {}
 
-moves = []
-previous_eval = 0
-white_accuracy = []
-black_accuracy = []
-white_classifications = {}
-black_classifications = {}
-
-try:
-    PGN_PATH = input("PGN File Path: ").strip('"\'# ')
+    PGN_PATH = PGN_PATH.strip('"\'# ')
 
     with open(PGN_PATH) as pgn_file:
         game = chess.pgn.read_game(pgn_file)
 
         if game is None:
-            print("Fail to load PGN")
-        else:
-            print(game.headers["Event"])
+            return "Fail to load PGN"
 
         board = chess.Board()
 
-        for i, move in enumerate(game.mainline_moves()):
+        move_list = list(game.mainline_moves())
+        total = len(move_list)
+
+        for i, move in enumerate(move_list):
             engine_analysis_data = analyse_game(board, move)
 
             engine_move = engine_analysis_data["Best Move"]
@@ -51,18 +50,6 @@ try:
             else:
                 black_classifications[classification] = black_classifications.get(classification, 0) + 1
 
-            '''
-            if turn == chess.WHITE:
-                if classification in white_classifications:
-                    white_classifications[classification] += 1
-                else:
-                    white_classifications[classification] = 1
-            else:
-                if classification in black_classifications:
-                    black_classifications[classification] += 1
-                else:
-                    black_classifications[classification] = 1
-            '''
             accuracy = evaluation.move_accuracy(before_expectation_score, after_expectation_score, turn)
 
             white_accuracy.append(accuracy) if turn == chess.WHITE else black_accuracy.append(accuracy)
@@ -84,32 +71,17 @@ try:
             }
 
             moves.append(move_data)
-
-        for move in moves:
-            print("-----------------")
-            print(f"\nMove {move["Move"]}")
-            print(f"\nPlayer Move: {move["Player Move"]}")
-            print(f"\nBest Move: {move["Best Move"]}")
-            print(f"\nEval: {move["Eval Before"]} -> {move["Eval After"]}")
-            print(f"\nClassification: {move["Classification"]}")
-            print(f"\nWDL Prob: Win: {move["WDL Win Prob"]}% | Draw: {move["WDL Draw Prob"]}% | Loss: {move["WDL Loss Prob"]}%")
-            print(f"\nBoard Fen: {move["Board FEN"]}")
-            print("\n-----------------")
+            progress = int((i+1)/total*100)
 
         white_game_accuracy, black_game_accuracy = game_accuracy(white_accuracy, black_accuracy)
-        print(f"White Game Accuracy: {white_game_accuracy:.2f}%")
-        print(f"Black Game Accuracy: {black_game_accuracy:.2f}%") 
 
-        print("\nWhite Classifications")
-        for white_classification in white_classifications:
-            print(f"- {white_classification}: {white_classifications[white_classification]}")
-
-        print("\nBlack Classifications")
-        for black_classification in black_classifications:
-            print(f"- {black_classification}: {black_classifications[black_classification]}")
-
-except Exception as e:
-    print(e)
-    print(traceback.format_exc())
-finally:
+        return {
+            "moves": moves,
+            "white_accuracy": white_game_accuracy,
+            "black_accuracy": black_game_accuracy,
+            "white_classifications": white_classifications,
+            "black_classifications": black_classifications,
+            "headers": game.headers,
+            "Progress": progress
+        }
     engine.quit()
