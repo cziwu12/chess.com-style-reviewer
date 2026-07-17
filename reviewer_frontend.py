@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
 )
 from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtCore import QObject, Signal, QThread
 from reviwer_backend import review_game
 from analysis import engine
 import chess.svg
@@ -23,14 +24,20 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Chess Reviewer")
+        self.setMinimumSize(600, 700)
 
         self.load_button = QPushButton("Load PGN")
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 100)
+        self.progress.setValue(0)
+        self.progress.setFormat("%p%")
 
         self.event_label = QLabel("Event")
         self.white_label = QLabel("White Accuracy")
         self.black_label = QLabel("Black Accuracy")
         self.board = QSvgWidget()
-        self.board.setMinimumSize(500,500)
+        self.board.setFixedSize(500,500)
 
         self.move_list = QListWidget()
 
@@ -39,6 +46,7 @@ class MainWindow(QMainWindow):
 
         left = QVBoxLayout()
         left.addWidget(self.load_button)
+        left.addWidget(self.progress)
         left.addWidget(self.event_label)
         left.addWidget(self.white_label)
         left.addWidget(self.black_label)
@@ -61,6 +69,8 @@ class MainWindow(QMainWindow):
         self.move_list.currentRowChanged.connect(self.show_move)
 
     def load_pgn(self):
+        self.load_button.setEnabled(False)
+        self.progress.setValue(0)
         self.move_list.clear()
 
         self.move_info.clear()
@@ -79,27 +89,21 @@ class MainWindow(QMainWindow):
         if not filename:
             return
 
-        result = review_game(filename)
-        self.event_label.setText(
-            result["headers"]["Event"]
-        )
+        self.thread = QThread()
+        self.worker = ReviewWorker(filename)
 
-        self.white_label.setText(
-            f"White Accuracy: {result['white_accuracy']:.2f}%"
-        )
+        self.worker.moveToThread(self.thread)
 
-        self.black_label.setText(
-            f"Black Accuracy: {result['black_accuracy']:.2f}%"
-        )
+        self.thread.started.connect(self.worker.run)
 
-        self.moves = result["moves"]
+        self.worker.progress.connect(self.progress.setValue)
+        self.worker.finished.connect(self.analysis_finished)
 
-        self.move_list.clear()
+        self.worker.finished.connect(self.thread.quit)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.worker.finished.connect(self.worker.deleteLater)
 
-        for move in self.moves:
-            self.move_list.addItem(
-                f"{move['Move']}. {move['Player Move']} ({move['Classification']})"
-            )        
+        self.thread.start()
 
     def show_move(self, index):
         if index < 0:
@@ -135,14 +139,62 @@ class MainWindow(QMainWindow):
         self.move_info.setPlainText(text)
         board = chess.Board(move["Board FEN"])
 
+        last_move = chess.Move.from_uci(move["Last Move"])
+
+        check_square = board.king(board.turn) if board.is_check() else None
+
         svg = chess.svg.board(
             board,
-            size=500
+            size=500,
+            lastmove=last_move,
+            check=check_square
         )
-
+        
         self.board.load(bytearray(svg, encoding="utf-8"))
 
+    def analysis_finished(self, result):
+        self.load_button.setEnabled(True)
+        self.progress.setValue(100)
+        self.event_label.setText(
+            result["headers"]["Event"]
+        )
 
+        self.white_label.setText(
+            f"White Accuracy: {result['white_accuracy']:.2f}%"
+        )
+
+        self.black_label.setText(
+            f"Black Accuracy: {result['black_accuracy']:.2f}%"
+        )
+
+        self.moves = result["moves"]
+
+        self.move_list.clear()
+
+        for move in self.moves:
+            self.move_list.addItem(
+                f"{move['Move']}. {move['Player Move']} ({move['Classification']})"
+            )
+
+        if self.move_list.count() > 0:
+            self.move_list.setCurrentRow(0)
+
+class ReviewWorker(QObject):
+
+    progress = Signal(int)
+    finished = Signal(dict)
+
+    def __init__(self, filename):
+        super().__init__()
+        self.filename = filename
+
+    def run(self):
+        result = review_game(
+            self.filename,
+            progress_callback=self.progress.emit
+        )
+
+        self.finished.emit(result)
 
 app = QApplication(sys.argv)
 

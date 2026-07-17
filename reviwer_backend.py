@@ -4,7 +4,7 @@ from analysis import analyse_game, engine
 import evaluation
 from game_evaluation import game_accuracy
 
-def review_game(PGN_PATH):
+def review_game(PGN_PATH, progress_callback=None):
     moves = []
     previous_eval = 0
     white_accuracy = []
@@ -38,8 +38,8 @@ def review_game(PGN_PATH):
             before_expectation_score, before_win, before_draw, before_loss = evaluation.wdl(engine_analysis_data["Engine Info"]["wdl"])
 
             if board.is_game_over():
-                after_win, after_draw, after_loss = evaluation.wdl_gameover(board, turn)
-                continue
+                    after_expectation_score = 100
+                    after_win, after_draw, after_loss = evaluation.wdl_gameover(board, turn)
             else:
                 after_expectation_score, after_win, after_draw, after_loss = evaluation.wdl(engine_analysis_data["Player Info"]["wdl"])
 
@@ -58,6 +58,7 @@ def review_game(PGN_PATH):
 
             move_data = {
                 "Move": i+1,
+                "Move Object": move,
                 "Player Move": player_move,
                 "Best Move": engine_move,
                 "Eval Before": previous_eval,
@@ -67,11 +68,15 @@ def review_game(PGN_PATH):
                 "WDL Win Prob": after_win,
                 "WDL Draw Prob": after_draw,
                 "WDL Loss Prob": after_loss,
-                "Board FEN": board.fen()
+                "Board FEN": board.fen(),
+                "Last Move": move.uci()
             }
 
             moves.append(move_data)
             progress = int((i+1)/total*100)
+
+            if progress_callback:
+                progress_callback(progress)
 
         white_game_accuracy, black_game_accuracy = game_accuracy(white_accuracy, black_accuracy)
 
