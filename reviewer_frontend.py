@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import QObject, Signal, QThread
 from reviwer_backend import review_game
-from analysis import engine
+from analysis import quit_engine
 import chess.svg
 
 class MainWindow(QMainWindow):
@@ -87,6 +87,7 @@ class MainWindow(QMainWindow):
         )
 
         if not filename:
+            self.load_button.setEnabled(True)
             return
 
         self.thread = QThread()
@@ -240,4 +241,4 @@ QLabel {
 window.show()
 
 app.exec()
-engine.quit()
+quit_engine()

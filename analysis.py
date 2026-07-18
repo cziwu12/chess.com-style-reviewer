@@ -1,16 +1,38 @@
+from pathlib import Path
 import chess.engine
+import sys
 
-engine = chess.engine.SimpleEngine.popen_uci(r"C:\Users\notcz\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe")
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR = Path(__file__).resolve().parent
 
-engine.configure({"UCI_ShowWDL": True})
+stockfish_dir = BASE_DIR / "stockfish"
+
+try:
+    STOCKFISH_PATH = next(stockfish_dir.glob("stockfish*.exe"))
+except StopIteration:
+    raise FileNotFoundError(f"No Stockfish executable found in {stockfish_dir}")
+
+engine = None
+
+def get_engine():
+    global engine
+
+    if engine is None:
+        engine = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH_PATH))
+        engine.configure({"UCI_ShowWDL": True})
+
+    return engine
 
 def analyse_game(board, move):
         turn = board.turn
 
-        # Capture this before the move; it is used to identify forced moves.
         legal_moves = list(board.legal_moves)
 
         board_sim = board.copy()
+        engine = get_engine()
+
         before_info = engine.analyse(board_sim, chess.engine.Limit(time=1, depth=22)) 
 
         engine_move = before_info["pv"][0]
@@ -35,3 +57,9 @@ def analyse_game(board, move):
             "Legal Moves": legal_moves
         }
 
+def quit_engine():
+    global engine
+
+    if engine is not None:
+        engine.quit()
+        engine = None

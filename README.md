@@ -13,10 +13,14 @@ my attempt at building a chess.com style reviewer. Ever since I starting to lear
 - SVG Board
 - Move and Check Highlights
 
+## Requirements
+
+Windows 10/11
+
 ## Installation
 
 - Download and extract application
-- Run 
+- Run the application (Windows might show a "Windows protected your PC" window but until I purchase a Code Signing Certificate, just click "Run Anyway"). Make sure you DON'T move the .exe to a different location as it needs to be in the same location with _internal else the app won't run.
 
 ## Usage 
 
@@ -56,7 +60,7 @@ Now you have a PGN file of your game:
 
 ## How it works
 
-User sends in PGN file, then it's analysed by Stockfish. The output is then used to get Cp (centipawn), WDL Prob and the best engine move (along with some other info but not rlly necessary). Move accuracy is then calculated seperately using Lichesses formula for calculating move accuracy (an exponetial curve where the expectation score loss is overlayed onto the curve to get the accuracy value). Classification is also seperate using Cp score and Matescore to return a classification. I'm working on improving the classification system. After all of that the review game func returns a dict with all of the info to frontend to format an display. After the entire game is fully analysed, the game accuracy is calculated using the accuracy and overlaying onto a sigmoid curve (a curve with an s shape) to generate "weights". Game accuracy is then calculated using the sum of the weights times the accuracy divided by the number of moves (or accuracy percentages). This is not how platforms like chess.com calculate game accuracy so ill also be improbing this (ill probably imrpove this first).
+User sends in PGN file, then it's analysed by Stockfish. The output is then used to get Cp (centipawn), WDL Prob and the best engine move (along with some other info but not rlly necessary). Move accuracy is then calculated seperately using Lichesses formula for calculating move accuracy (an exponetial curve where the expectation score loss is overlayed onto the curve to get the accuracy value). Classification is also seperate using Cp score and Matescore to return a classification. I'm working on improving the classification system. After all of that the review game func returns a dict with all of the info to frontend to format an display. After the entire game is fully analysed, the game accuracy is calculated using the accuracy and overlaying onto a sigmoid curve (a curve with an s shape) to generate "weights". Game accuracy is then calculated using the sum of the weights times the accuracy divided by the number of moves (or accuracy percentages). This is not how platforms like chess.com calculate game accuracy so ill also be improbing this (ill probably improve this first).
 
 ## Limitations
 
@@ -68,3 +72,9 @@ The current version is ONLY the "bare minimum" of a chess reviewer. Currently it
 - PySide6
 - python-chess
 - Stockfish
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPLv3).
+
+It bundles the Stockfish chess engine, which is also licensed under GPLv3.
