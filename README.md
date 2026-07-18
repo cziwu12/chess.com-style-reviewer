@@ -1,5 +1,7 @@
 # chess.com style reviewer
-my attempt at building a chess.com style reviewer. Ever since I starting to learn programming, specifically python, I have always wanted to build/replicate random shi that I find interesting on my own. Building a chess reviewer it one of those projects. It always frustrates me that I need to pay to review my game. I could analyse my game manually but i'm using this very fixable issue as an excuse to NOT continue learning CS50 bcs my laziness is ahh. Honestly just building the backend already taught me more on Python than CS50P combined (definetely not exagarating) so even though this is just the bare minimum and it's very ahh (very bad) according to my standards, im still proud that i tried. For some reason I also spent hours just learning and digesting how evaluation, especially move and game accuracy, works as it requires a good amount of math. And yes, this is just v1 and Ill improve the reviewer overtime. To the reader/user: i want your feedback, especially if you play chess. tell me how I could improve it. thanks
+my attempt at building a chess.com style reviewer. Ever since I starting to learn programming, specifically python, I have always wanted to build/replicate random shi that I find interesting on my own. Building a chess reviewer it one of those projects. It always frustrates me that I need to pay to review my game. I could analyse my game manually but i'm using this very fixable issue as an excuse to NOT continue learning CS50P bcs my laziness is ahh. Honestly just building the backend already taught me more on Python than CS50P combined (definetely not exagarating) so even though this is just the bare minimum and it's very ahh (very bad) according to my standards, im still proud that i tried. For some reason I also spent hours just learning and digesting how evaluation, especially move and game accuracy, works as it requires a good amount of math. And yes, this is just v1 and Ill improve the reviewer overtime. To the reader/user: i want your feedback, especially if you play chess. tell me how I could improve it. thanks
+
+![alt text](image-1.png)
 
 ## Features
 - Load PGN 
@@ -27,6 +29,8 @@ my attempt at building a chess.com style reviewer. Ever since I starting to lear
 - Click Share
 - Select PGN and download the file
 
+![alt text](image-3.png)
+
 Now you have a PGN file of your game:
 
 - Open the application and click on the "Load PGN" button
@@ -34,6 +38,8 @@ Now you have a PGN file of your game:
 - Wait for it to analyse
 
 ## Interface Guide
+
+![alt text](image-2.png)
 
 ### Left Side
 
