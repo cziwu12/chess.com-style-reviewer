@@ -3,4 +3,4 @@ build/
 dist/
 __pycache__/
 .vscode/
-.DS_Store
+stockfish/stockfish-windows-x86-64.exe

@@ -73,6 +73,15 @@ The current version is ONLY the "bare minimum" of a chess reviewer. Currently it
 - python-chess
 - Stockfish
 
+## For Devs:
+
+This project requires Stockfish.
+
+Download the latest Windows x64 binary from:
+https://github.com/official-stockfish/Stockfish/releases
+
+Extract the executable into this folder before running the project.
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPLv3).
