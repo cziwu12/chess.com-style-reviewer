@@ -1,4 +1,4 @@
-# chess.com style reviewer
+# Chess.com Style Reviewer
 
 ![alt text](image-1.png)
 
