@@ -1,4 +1,5 @@
-# Chess.com Style Reviewer
+# **Stockfish-Powered Chess Game Analyzer with Chess.com Style Reviews**
+A desktop chess analysis application that uses Stockfish to analyze PGN games, classify moves from Best to Blunder, calculate player accuracy and visualize positions with an interactive SVG board.
 
 ![alt text](image-1.png)
 
@@ -20,6 +21,43 @@ Windows 10/11
 
 - Download and extract application
 - Run the application (Windows might show a "Windows protected your PC" window but until I purchase a Code Signing Certificate, just click "Run Anyway"). Make sure you DON'T move the .exe to a different location as it needs to be in the same location with _internal else the app won't run.
+
+## Running From Source
+
+### Requirements
+- Python 3.10+
+- Stockfish engine
+
+### Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/chess-reviewer.git
+cd chess-reviewer 
+```
+2. Create a virtual environment:
+```bash
+python -m venv .venv
+```
+3. Activate the virtual environment:
+```powershell
+.venv\Scripts\Activate.ps1
+```
+4. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+5. Download Stockfish:
+Download the Windows x64 Stockfish binary from:
+https://github.com/official-stockfish/Stockfish/releases
+Place the executable inside:
+```
+stockfish/
+    stockfish-windows-x86-64.exe
+```
+6. Run the application:
+python reviewer_frontend.py
 
 ## Usage 
 
@@ -79,7 +117,7 @@ This project requires Stockfish.
 Download the latest Windows x64 binary from:
 https://github.com/official-stockfish/Stockfish/releases
 
-Extract the executable into this folder before running the project.
+Extract the Stockfish executable into the ```stockfish/``` directory before running the project.
 
 ## License
 
