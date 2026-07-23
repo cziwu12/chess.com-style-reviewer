@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtCore import QObject, Signal, QThread
-from reviwer_backend import review_game
+from reviewer_backend import review_game
 from analysis import quit_engine
 import chess.svg
 
